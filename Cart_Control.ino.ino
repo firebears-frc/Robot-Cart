@@ -4,7 +4,7 @@ Servo leftDriveOne;  // create servo object to control a Jag
 Servo rightDriveOne;
 Servo leftDriveTwo;
 Servo rightDriveTwo;
-//Servo lift;
+Servo liftMotor;
 
 int leftJoystick = 0;  // analog pin used to connect the left joystick
 int leftVal;    // variable to read the value from the analog pin
@@ -12,45 +12,66 @@ int rightJoystick = 2;
 int rightVal;
 int safetySwitch = 7;
 int buttonState = 0;
+int liftUp = 2;
+int liftDown = 3;
+int liftLimitUp = 5;
+int liftLimitDown = 4;
 
-int leftMax = 903;
+int leftMax = 1023;
 int rightMax = 1023;
 int leftMin = 0;
 int rightMin = 0;
-int leftMid = 521;
+int leftMid = 525;
 int rightMid = 508;
 
 void setup() {
-  leftDriveOne.attach(9);  // attaches the left drive motor on pin 9 to the servo object
-  rightDriveOne.attach(8);
-  leftDriveTwo.attach(11);
-  rightDriveTwo.attach(10);
+  liftMotor.attach(6);
+  leftDriveOne.attach(8);  // attaches the left drive motor on pin 9 to the servo object
+  rightDriveOne.attach(9);
+  leftDriveTwo.attach(10);
+  rightDriveTwo.attach(11);
   pinMode(safetySwitch, INPUT);
-//  lift.attach(14);
+  pinMode(liftUp, INPUT);
+  pinMode(liftDown, INPUT);
+  pinMode(liftLimitUp, INPUT_PULLUP);
+  pinMode(liftLimitDown, INPUT_PULLUP);
   
-  //Serial.begin(9800);
+  Serial.begin(9800);
 }
 
 void loop() {
   buttonState = digitalRead(safetySwitch);
   if (buttonState == LOW) {
     leftVal = analogRead(leftJoystick); // reads the value of the left joystick (value between 0 and 1023)
-    //Serial.println(leftVal);
-    if (leftVal > leftMid) {
-      leftVal = map(leftVal, leftMid, leftMax, 1500, 2000);  
-    } else {
-      leftVal = map(leftVal, leftMin, 1023, 1000, 2000);  // scale it to use it with the writeMicroseconds function (value between 1000 and 2000)
+    leftVal = map(leftVal, leftMin, 1023, 1000, 2000);
+    if (digitalRead(liftDown) == HIGH && digitalRead(liftUp) == HIGH) {
+      leftDriveOne.writeMicroseconds(leftVal);      // tells Jag to output based on the scaled value
+      leftDriveTwo.writeMicroseconds(leftVal);
     }
-    leftDriveOne.writeMicroseconds(leftVal);      // tells Jag to output based on the scaled value
-    leftDriveTwo.writeMicroseconds(leftVal);
     rightVal = analogRead(rightJoystick);
-    //Serial.println(rightVal);
     rightVal = map(rightVal, rightMin, 1023, 2000, 1000);
-    rightDriveOne.writeMicroseconds(rightVal);
-    rightDriveTwo.writeMicroseconds(rightVal);
+    if (digitalRead(liftDown) == HIGH && digitalRead(liftUp) == HIGH) {
+      rightDriveOne.writeMicroseconds(rightVal);
+      rightDriveTwo.writeMicroseconds(rightVal);
+    }
     delay(50);
-    //Serial.println(leftVal);
-    //Serial.println(" ");
-    //Serial.println(rightVal);
+
+    leftVal = analogRead(leftJoystick);
+    rightVal = analogRead(rightJoystick);
+    if (digitalRead(liftUp) == LOW) {
+      liftMotor.writeMicroseconds(1000);
+      if (digitalRead(liftLimitUp) == LOW) {
+        liftMotor.writeMicroseconds(1500);
+      }
+    }
+    if (digitalRead(liftDown) == LOW) {
+      liftMotor.writeMicroseconds(2000);
+      if (digitalRead(liftLimitDown) == LOW) {
+          liftMotor.writeMicroseconds(1500);
+      }
+    } 
+    if (digitalRead(liftDown) == HIGH && digitalRead(liftUp) == HIGH || leftVal > (leftMid + 10) || leftVal < (leftMid - 10) || rightVal > (rightMid + 10) || rightVal < (rightMid - 10)) {
+        liftMotor.writeMicroseconds(1500);
+    }
   }
 }
